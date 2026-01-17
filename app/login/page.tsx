@@ -1,55 +1,28 @@
 "use client";
 
+import { Suspense, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
-    const router = useRouter();
-    const sp = useSearchParams();
+function LoginInner() {
+    const searchParams = useSearchParams();
+    const callbackUrl = useMemo(
+        () => searchParams.get("callbackUrl") || "/app",
+        [searchParams]
+    );
 
-    const callbackUrl = useMemo(() => sp.get("callbackUrl") || "/app", [sp]);
+    const [loading, setLoading] = useState(false);
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loadingGoogle, setLoadingGoogle] = useState(false);
-    const [loadingCreds, setLoadingCreds] = useState(false);
-    const [msg, setMsg] = useState<string | null>(null);
-
-    async function handleGoogle() {
-        setMsg(null);
-        setLoadingGoogle(true);
+    const handleGoogle = async () => {
+        setLoading(true);
         await signIn("google", { callbackUrl });
-        setLoadingGoogle(false);
-    }
-
-    async function handleCredentials(e: React.FormEvent) {
-        e.preventDefault();
-        setMsg(null);
-        setLoadingCreds(true);
-
-        const res = await signIn("credentials", {
-            redirect: false,
-            email,
-            password,
-            callbackUrl,
-        });
-
-        setLoadingCreds(false);
-
-        if (!res || res.error) {
-            setMsg("Correo o contraseña incorrectos (o cuenta es solo Google).");
-            return;
-        }
-
-        router.push(callbackUrl);
-    }
+    };
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-6">
             <div className="w-full max-w-md bg-gray-900 p-6 rounded-xl border border-gray-800">
-                <h1 className="text-2xl font-bold mb-2">Iniciar sesión</h1>
+                <h1 className="text-2xl font-bold mb-1">Iniciar sesión</h1>
                 <p className="text-sm text-gray-400 mb-5">
                     Elige Google o entra con tu correo y contraseña.
                 </p>
@@ -57,53 +30,49 @@ export default function LoginPage() {
                 {/* Google */}
                 <button
                     onClick={handleGoogle}
-                    disabled={loadingGoogle}
-                    className="w-full bg-white text-black font-semibold p-3 rounded-lg hover:opacity-90 disabled:opacity-60"
+                    disabled={loading}
+                    className="w-full bg-white text-black hover:bg-gray-200 p-3 rounded-lg font-semibold"
                 >
-                    {loadingGoogle ? "Conectando con Google..." : "Continuar con Google"}
+                    {loading ? "Conectando..." : "Continuar con Google"}
                 </button>
 
-                <div className="my-5 flex items-center gap-3 text-gray-500 text-xs">
-                    <div className="h-px bg-gray-800 flex-1" />
-                    O
-                    <div className="h-px bg-gray-800 flex-1" />
+                <div className="my-4 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-gray-800" />
+                    <span className="text-xs text-gray-500">o</span>
+                    <div className="h-px flex-1 bg-gray-800" />
                 </div>
 
-                {/* Credenciales */}
-                <form onSubmit={handleCredentials}>
-                    <input
-                        type="email"
-                        placeholder="Correo"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full mb-3 p-3 rounded bg-gray-800 border border-gray-700 outline-none"
-                    />
+                {/* Email/Password (por ahora UI) */}
+                <input
+                    type="email"
+                    placeholder="Correo"
+                    className="w-full mb-3 p-3 rounded bg-gray-800 border border-gray-700"
+                />
+                <input
+                    type="password"
+                    placeholder="Contraseña"
+                    className="w-full mb-4 p-3 rounded bg-gray-800 border border-gray-700"
+                />
 
-                    <input
-                        type="password"
-                        placeholder="Contraseña"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full mb-4 p-3 rounded bg-gray-800 border border-gray-700 outline-none"
-                    />
+                <button className="w-full bg-orange-600 hover:bg-orange-700 p-3 rounded-lg">
+                    Entrar
+                </button>
 
-                    <button
-                        disabled={loadingCreds}
-                        className="w-full bg-orange-600 hover:bg-orange-700 p-3 rounded-lg disabled:opacity-60"
-                    >
-                        {loadingCreds ? "Entrando..." : "Entrar"}
-                    </button>
-                </form>
-
-                {msg && <p className="mt-4 text-sm text-red-400">{msg}</p>}
-
-                <p className="mt-5 text-sm text-gray-400">
+                <p className="mt-4 text-xs text-gray-400">
                     ¿No tienes cuenta?{" "}
-                    <Link className="text-orange-400 hover:underline" href="/register">
+                    <Link href="/register" className="text-orange-400 hover:underline">
                         Regístrate
                     </Link>
                 </p>
             </div>
         </main>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
+            <LoginInner />
+        </Suspense>
     );
 }
